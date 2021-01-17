@@ -4,45 +4,51 @@ Created on Thu Jan 14 15:36:00 2021
 
 @author: straw
 """
-from numpy import log, dot, e
-from numpy.random import rand
+import numpy as np
 
-class LogisticRegressionBis:
+class LogisticR:
+    def __init__(self, lr=0.01, num_iter=1000, fit_intercept=True, verbose=False):
+        self.lr = lr
+        self.num_iter = num_iter
+        self.fit_intercept = fit_intercept
+        self.verbose = verbose
     
-    def sigmoid(self, z): return 1 / (1 + e**(-z))
+    def __add_intercept(self, X):
+        intercept = np.ones((X.shape[0], 1))
+        return np.concatenate((intercept, X), axis=1)
     
-    def cost_function(self, X, y, weights):                 
-        z = dot(X, weights)
-        predict_1 = y * log(self.sigmoid(z))
-        predict_0 = (1 - y) * log(1 - self.sigmoid(z))
-        return -sum(predict_1 + predict_0) / len(X)
+    def __sigmoid(self, z):
+        return 1 / (1 + np.exp(-z))
     
-    def fit(self, X, y, epochs=25, lr=0.05):        
-        loss = []
-        weights = rand(X.shape[1])
-        N = len(X)
-                 
-        for _ in range(epochs):        
-            # Gradient Descent
-            y_hat = self.sigmoid(dot(X, weights))
-            weights -= lr * dot(X.T,  y_hat - y) / N            
-            # Saving Progress
-            loss.append(self.cost_function(X, y, weights)) 
+    def __loss(self, h, y):
+        return (-y * np.log(h) - (1 - y) * np.log(1 - h)).mean()
+    
+    def fit(self, X, y):
+        if self.fit_intercept:
+            X = self.__add_intercept(X)
+        
+        # weights initialization
+        self.theta = np.zeros(X.shape[1])
+        
+        for i in range(self.num_iter):
+            z = np.dot(X, self.theta)
+            h = self.__sigmoid(z)
+            gradient = np.dot(X.T, (h - y)) / y.size
+            self.theta -= self.lr * gradient
             
-        self.weights = weights
-        self.loss = loss
+            z = np.dot(X, self.theta)
+            h = self.__sigmoid(z)
+            loss = self.__loss(h, y)
+                
+            if(self.verbose ==True and i % 10000 == 0):
+                print(f'loss: {loss} \t')
     
-    def predict(self, X):        
-        # Predicting with sigmoid function
-        z = dot(X, self.weights)
-        # Returning binary result
-        return [1 if i > 0.5 else 0 for i in self.sigmoid(z)]
-
-
-LR = LogisticRegressionBis()
-LR.fit(X_train, y_train)
-y_pred = LR.predict(X_test)
-confusion_matrix(y_test, y_pred)
-print(classification_report(y_test, y_pred))
-
+    def predict_prob(self, X):
+        if self.fit_intercept:
+            X = self.__add_intercept(X)
+    
+        return self.__sigmoid(np.dot(X, self.theta))
+    
+    def predict(self, X):
+        return self.predict_prob(X).round()
 
